@@ -302,6 +302,8 @@ const YouTubeDashboard = () => {
             </thead>
             <tbody>
               {channels.map((channel) => (
+              console.log("Channel data:", channel);  // この行を追加
+              return (
                 <tr key={channel.youtube_url} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-2">
                     <input
@@ -329,7 +331,7 @@ const YouTubeDashboard = () => {
                     >
                       <img
                         src={channel.icon_url}
-                        alt=""
+                        alt={`${channel.channel_name}のアイコン`}
                         className="w-8 h-8 rounded-full mr-2"
                         onError={(e) => {
                           e.target.onerror = null;
