@@ -34,8 +34,15 @@ const YouTubeDashboard = () => {
       if (!response.ok) throw new Error('API request failed');
       const jsonData = await response.json();
       console.log("API Response:", jsonData);  // デバッグ用
+      console.log("Response structure:", {
+      hasComparison: 'comparison' in jsonData,
+      hasChanges: 'comparison' in jsonData && 'changes' in jsonData.comparison,
+      dataKeys: Object.keys(jsonData),
+      status: response.status
+    });
       setData(jsonData);
     } catch (err) {
+      console.error("Fetch error:", err);  // エラーの詳細をログ出力
       setError(err.message);
     } finally {
       setIsLoading(false);
