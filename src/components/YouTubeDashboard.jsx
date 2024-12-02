@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { ArrowUpCircle, ArrowDownCircle, MinusCircle } from 'lucide-react';
 
@@ -51,11 +49,11 @@ const YouTubeDashboard = () => {
   };
 
   if (isLoading) {
-    return <div>データを読み込んでいます...</div>;
+    return <div className="p-4">データを読み込んでいます...</div>;
   }
 
   if (error) {
-    return <div>エラーが発生しました: {error}</div>;
+    return <div className="p-4 text-red-500">エラーが発生しました: {error}</div>;
   }
 
   // グラフ用データの準備
@@ -67,61 +65,67 @@ const YouTubeDashboard = () => {
 
   return (
     <div className="space-y-6 p-6 max-w-7xl mx-auto">
-      {/* ランキング変動テーブル */}
-      <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">ランキング変動</h3>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>チャンネル名</TableHead>
-              <TableHead>前回順位</TableHead>
-              <TableHead>現在順位</TableHead>
-              <TableHead>変動</TableHead>
-              <TableHead>登録者数</TableHead>
-              <TableHead>登録者増減</TableHead>
-              <TableHead>再生回数</TableHead>
-              <TableHead>再生回数増減</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {channelData.map((channel, index) => (
-              <TableRow key={index}>
-                <TableCell>{channel.name}</TableCell>
-                <TableCell>{channel.previousRank}</TableCell>
-                <TableCell>{channel.currentRank}</TableCell>
-                <TableCell>
-                  {getRankChange(channel.previousRank, channel.currentRank)}
-                </TableCell>
-                <TableCell>{formatNumber(channel.subscribers)}</TableCell>
-                <TableCell className={channel.subscriberChange >= 0 ? 'text-green-600' : 'text-red-600'}>
-                  {formatNumber(channel.subscriberChange)}
-                  ({getChangePercentage(channel.subscribers, channel.subscriberChange)})
-                </TableCell>
-                <TableCell>{formatNumber(channel.views)}</TableCell>
-                <TableCell className={channel.viewChange >= 0 ? 'text-green-600' : 'text-red-600'}>
-                  {formatNumber(channel.viewChange)}
-                  ({getChangePercentage(channel.views, channel.viewChange)})
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-2xl font-bold mb-6">YouTubeチャンネルランキング分析</h2>
+        
+        {/* ランキング変動テーブル */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold mb-4">ランキング変動</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="px-4 py-2 text-left">チャンネル名</th>
+                  <th className="px-4 py-2 text-left">前回順位</th>
+                  <th className="px-4 py-2 text-left">現在順位</th>
+                  <th className="px-4 py-2 text-left">変動</th>
+                  <th className="px-4 py-2 text-left">登録者数</th>
+                  <th className="px-4 py-2 text-left">登録者増減</th>
+                  <th className="px-4 py-2 text-left">再生回数</th>
+                  <th className="px-4 py-2 text-left">再生回数増減</th>
+                </tr>
+              </thead>
+              <tbody>
+                {channelData.map((channel, index) => (
+                  <tr key={index} className="border-b">
+                    <td className="px-4 py-2">{channel.name}</td>
+                    <td className="px-4 py-2">{channel.previousRank}</td>
+                    <td className="px-4 py-2">{channel.currentRank}</td>
+                    <td className="px-4 py-2">
+                      {getRankChange(channel.previousRank, channel.currentRank)}
+                    </td>
+                    <td className="px-4 py-2">{formatNumber(channel.subscribers)}</td>
+                    <td className={`px-4 py-2 ${channel.subscriberChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatNumber(channel.subscriberChange)}
+                      ({getChangePercentage(channel.subscribers, channel.subscriberChange)})
+                    </td>
+                    <td className="px-4 py-2">{formatNumber(channel.views)}</td>
+                    <td className={`px-4 py-2 ${channel.viewChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatNumber(channel.viewChange)}
+                      ({getChangePercentage(channel.views, channel.viewChange)})
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-      {/* 登録者数グラフ */}
-      <div className="h-96">
-        <h3 className="text-lg font-semibold mb-4">チャンネル別登録者数比較</h3>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={subscriberGraphData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="登録者数" fill="#4f46e5" />
-            <Bar dataKey="増減" fill="#22c55e" />
-          </BarChart>
-        </ResponsiveContainer>
+        {/* 登録者数グラフ */}
+        <div className="h-96">
+          <h3 className="text-lg font-semibold mb-4">チャンネル別登録者数比較</h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={subscriberGraphData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="登録者数" fill="#4f46e5" />
+              <Bar dataKey="増減" fill="#22c55e" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );
