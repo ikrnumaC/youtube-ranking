@@ -12,8 +12,6 @@ const YouTubeDashboard = () => {
       setIsLoading(true);
       setError(null);
       
-      console.log('Fetching data from API...');
-      
       const response = await fetch('https://m4ks023065.execute-api.ap-southeast-2.amazonaws.com/prod/comparison', {
         method: 'GET',
         headers: {
@@ -27,7 +25,6 @@ const YouTubeDashboard = () => {
       }
       
       const jsonData = await response.json();
-      console.log('Data structure:', JSON.stringify(jsonData, null, 2)); // データ構造を詳細に表示
       setData(jsonData);
       
     } catch (err) {
@@ -41,6 +38,29 @@ const YouTubeDashboard = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const formatNumber = (num) => {
+    return new Intl.NumberFormat('ja-JP').format(num);
+  };
+
+  const getRankChangeIcon = (change) => {
+    if (change === 0) {
+      return <MinusCircle className="text-gray-500 inline" />;
+    }
+    return change > 0 ? 
+      <ArrowUpCircle className="text-green-500 inline" /> : 
+      <ArrowDownCircle className="text-red-500 inline" />;
+  };
+
+  // グラフ用データの準備
+  const getGraphData = () => {
+    if (!data?.comparison?.changes) return [];
+    return data.comparison.changes.slice(0, 10).map(channel => ({
+      name: channel.channel_name,
+      '登録者数': channel.current_stats.subscriber_count,
+      '月間再生回数': channel.current_stats.monthly_views
+    }));
+  };
 
   if (isLoading) {
     return (
@@ -76,19 +96,93 @@ const YouTubeDashboard = () => {
     );
   }
 
-  // データ構造を画面に表示
-  if (data) {
-    return (
-      <div className="p-6">
-        <h2 className="text-xl font-bold mb-4">受信したデータ構造:</h2>
-        <pre className="bg-gray-100 p-4 rounded overflow-auto">
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      </div>
-    );
-  }
+  return (
+    <div className="space-y-6 p-6 max-w-7xl mx-auto">
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">YouTubeチャンネルランキング分析</h2>
+          <p className="text-sm text-gray-600">
+            更新日時: {new Date(data.metadata.generated_at).toLocaleString('ja-JP')}
+          </p>
+        </div>
+        
+        {/* ランキング変動テーブル */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold mb-4">ランキング変動</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="px-4 py-2 text-left">順位</th>
+                  <th className="px-4 py-2 text-left">チャンネル名</th>
+                  <th className="px-4 py-2 text-left">変動</th>
+                  <th className="px-4 py-2 text-right">登録者数</th>
+                  <th className="px-4 py-2 text-right">登録者数増減</th>
+                  <th className="px-4 py-2 text-right">月間再生回数</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.comparison.changes.map((channel) => (
+                  <tr key={channel.current_rank} className="border-b">
+                    <td className="px-4 py-2">{channel.current_rank}</td>
+                    <td className="px-4 py-2">
+                      <a 
+                        href={channel.youtube_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        {channel.channel_name}
+                      </a>
+                    </td>
+                    <td className="px-4 py-2">
+                      {getRankChangeIcon(channel.rank_change)}
+                      <span className="ml-1">{channel.rank_change_text}</span>
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {formatNumber(channel.current_stats.subscriber_count)}
+                    </td>
+                    <td className={`px-4 py-2 text-right ${
+                      channel.subscriber_change.total > 0 ? 'text-green-600' : 
+                      channel.subscriber_change.total < 0 ? 'text-red-600' : ''
+                    }`}>
+                      {channel.subscriber_change.total ? (
+                        <>
+                          {formatNumber(channel.subscriber_change.total)}
+                          <span className="text-sm ml-1">
+                            ({channel.subscriber_change.percent.toFixed(2)}%)
+                          </span>
+                        </>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {formatNumber(channel.current_stats.monthly_views)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-  return <div>データが見つかりません</div>;
+        {/* グラフ */}
+        <div className="h-96">
+          <h3 className="text-lg font-semibold mb-4">トップ10チャンネル分析</h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={getGraphData()}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="登録者数" fill="#4f46e5" />
+              <Bar dataKey="月間再生回数" fill="#22c55e" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default YouTubeDashboard;
