@@ -331,7 +331,7 @@ const YouTubeDashboard = () => {
                     >
                       <img
                         src={channel.icon_url}
-                        alt={`${channel.channel_name}のアイコン`}
+                        alt=""
                         className="w-8 h-8 rounded-full mr-2"
                         onError={(e) => {
                           e.target.onerror = null;
