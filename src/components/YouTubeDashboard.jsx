@@ -327,6 +327,7 @@ const YouTubeDashboard = () => {
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:underline flex items-center"
                     >
+                      {console.log("Image URL for " + channel.channel_name + ":", channel.icon_url)}
                       <img
                         src={channel.icon_url}
                         alt={`${channel.channel_name}のアイコン`}
