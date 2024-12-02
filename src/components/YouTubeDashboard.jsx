@@ -34,6 +34,20 @@ const YouTubeDashboard = () => {
       if (!response.ok) throw new Error('API request failed');
       const jsonData = await response.json();
       setData(jsonData);
+      const fetchData = async () => {
+  try {
+    setIsLoading(true);
+    const response = await fetch('https://m4ks023065.execute-api.ap-southeast-2.amazonaws.com/prod/comparison');
+    if (!response.ok) throw new Error('API request failed');
+    const jsonData = await response.json();
+    console.log("API Response:", jsonData);  // デバッグ用
+    setData(jsonData);
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
     } catch (err) {
       setError(err.message);
     } finally {
