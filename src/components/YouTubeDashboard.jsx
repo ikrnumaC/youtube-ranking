@@ -320,7 +320,7 @@ const YouTubeDashboard = () => {
                       className="text-blue-600 hover:underline flex items-center"
                     >
                       <img
-                        src={`${channel.youtube_url}/avatar`}
+                        src={channel.icon_url}
                         alt=""
                         className="w-8 h-8 rounded-full mr-2"
                         onError={(e) => {
