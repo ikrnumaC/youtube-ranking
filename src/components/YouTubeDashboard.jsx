@@ -10,14 +10,30 @@ const YouTubeDashboard = () => {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('https://m4ks023065.execute-api.ap-southeast-2.amazonaws.com/prod/comparison');
+      setError(null);
+      
+      console.log('Fetching data from API...'); // デバッグ用ログ
+      
+      const response = await fetch('https://m4ks023065.execute-api.ap-southeast-2.amazonaws.com/prod/comparison', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        mode: 'cors' // CORSモードを明示的に指定
+      });
+
       if (!response.ok) {
-        throw new Error('API request failed');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
       const jsonData = await response.json();
+      console.log('Data received:', jsonData); // デバッグ用ログ
       setData(jsonData);
+      
     } catch (err) {
-      setError(err.message);
+      console.error('Fetch error details:', err); // デバッグ用ログ
+      setError(`${err.name}: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -27,6 +43,7 @@ const YouTubeDashboard = () => {
     fetchData();
   }, []);
 
+  // 以前と同じフォーマット関数
   const formatNumber = (num) => {
     return new Intl.NumberFormat('ja-JP').format(num);
   };
@@ -45,20 +62,55 @@ const YouTubeDashboard = () => {
       <ArrowDownCircle className="text-red-500" />;
   };
 
+  // ローディング表示の改善
   if (isLoading) {
-    return <div className="p-4">データを読み込んでいます...</div>;
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4"></div>
+          <p>データを読み込んでいます...</p>
+        </div>
+      </div>
+    );
   }
 
+  // エラー表示の改善
   if (error) {
-    return <div className="p-4 text-red-500">エラーが発生しました: {error}</div>;
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">エラーが発生しました</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error}</p>
+                <button 
+                  onClick={fetchData}
+                  className="mt-3 bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-2 px-4 rounded"
+                >
+                  再試行
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  // グラフ用データの準備
+  // 以下、元のレンダリングコード
   const subscriberGraphData = data?.channels.map(channel => ({
     name: channel.name,
     登録者数: channel.subscribers,
     増減: channel.subscriberChange
   })) || [];
+
+  // ... 残りのJSXコードは変更なし ...
 
   return (
     <div className="space-y-6 p-6 max-w-7xl mx-auto">
