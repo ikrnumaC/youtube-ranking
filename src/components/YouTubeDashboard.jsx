@@ -327,11 +327,10 @@ const YouTubeDashboard = () => {
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:underline flex items-center"
                     >
-                      {console.log("Channel object structure:", JSON.stringify(channel, null, 2))}  // ここに追加
                       <img
                         src={channel.icon_url}
                         alt={`${channel.channel_name}のアイコン`}
-                        className="w-8 h-8 rounded-full mr-2"
+                        className="w-4 h-4 rounded-full mr-2"
                         onError={(e) => {
                           e.target.onerror = null;
                           e.target.src = "https://via.placeholder.com/32";
