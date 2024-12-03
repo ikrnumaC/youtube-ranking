@@ -330,7 +330,7 @@ const YouTubeDashboard = () => {
                       <img
                         src={channel.icon_url}
                         alt={`${channel.channel_name}のアイコン`}
-                        className="w-4 h-4 rounded-full mr-2"
+                        className="w-2 h-2 rounded-full mr-2"
                         onError={(e) => {
                           e.target.onerror = null;
                           e.target.src = "https://via.placeholder.com/32";
