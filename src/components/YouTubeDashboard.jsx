@@ -89,9 +89,6 @@ useEffect(() => {
     loadCurrentPage();
 }, [currentPage]);
 
-    loadCurrentPage();
-  }, [currentPage]);
-
   const exportToCSV = () => {
     if (!data?.items) return;
 
