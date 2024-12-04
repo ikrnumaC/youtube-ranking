@@ -37,19 +37,6 @@ const fetchData = async (page = 1) => {
     
     if (!response.ok) throw new Error('API request failed');
     
-    const fetchData = async (page = 1) => {
-  if (cachedData[page]) {
-    return cachedData[page];
-  }
-
-  try {
-    setIsLoading(true);
-    const response = await fetch(
-      `https://m4ks023065.execute-api.ap-southeast-2.amazonaws.com/prod/get-youtube-rankings-dynamodb?page=${page}&limit=${itemsPerPage}`
-    );
-    
-    if (!response.ok) throw new Error('API request failed');
-    
     const jsonData = await response.json();
     console.log('API Response:', jsonData);
 
