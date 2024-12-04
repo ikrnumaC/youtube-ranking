@@ -106,7 +106,6 @@ const YouTubeDashboard = () => {
     link.download = `youtube_ranking_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
-
   const Pagination = () => {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
     
@@ -236,61 +235,6 @@ const YouTubeDashboard = () => {
               <Download className="w-4 h-4 mr-2" />
               選択したチャンネルをCSVエクスポート
             </button>
-            <p className="text-sm text-gray-600">
-              更新日時: {new Date().toLocaleString('ja-JP')}
-            </p>
-          </div>
-        </div>
-
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">登録者数</label>
-            <div className="flex space-x-2 mt-1">
-              <input
-                type="number"
-                placeholder="最小"
-                value={filters.subscribersMin}
-                onChange={e => setFilters(prev => ({ ...prev, subscribersMin: e.target.value }))}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-              />
-              <input
-                type="number"
-                placeholder="最大"
-                value={filters.subscribersMax}
-                onChange={e => setFilters(prev => ({ ...prev, subscribersMax: e.target.value }))}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">月間再生数</label>
-            <div className="flex space-x-2 mt-1">
-              <input
-                type="number"
-                placeholder="最小"
-                value={filters.viewsMin}
-                onChange={e => setFilters(prev => ({ ...prev, viewsMin: e.target.value }))}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-              />
-              <input
-                type="number"
-                placeholder="最大"
-                value={filters.viewsMax}
-                onChange={e => setFilters(prev => ({ ...prev, viewsMax: e.target.value }))}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-              />
-            </div>
-          </div>
-          <div className="flex items-center">
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={filters.newOnly}
-                onChange={e => setFilters(prev => ({ ...prev, newOnly: e.target.checked }))}
-                className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium text-gray-700">新規エントリーのみ表示</span>
-            </label>
           </div>
         </div>
 
@@ -298,71 +242,16 @@ const YouTubeDashboard = () => {
           <table className="min-w-full table-auto">
             <thead>
               <tr className="bg-gray-100">
-                <th className="px-4 py-2 text-left">
-                  <input
-                    type="checkbox"
-                    checked={selectedChannels.size === data.items.length}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        setSelectedChannels(new Set(data.items.map(c => c.youtube_url)));
-                      } else {
-                        setSelectedChannels(new Set());
-                      }
-                    }}
-                    className="rounded border-gray-300"
-                  />
-                </th>
                 <th className="px-4 py-2 text-left">順位</th>
                 <th className="px-4 py-2 text-left">チャンネル名</th>
                 <th className="px-4 py-2 text-left">変動</th>
-                <th className="px-4 py-2 text-right group cursor-pointer" onClick={() => {
-                  if (sortField === 'subscriber_count') {
-                    setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-                  } else {
-                    setSortField('subscriber_count');
-                    setSortDirection('desc');
-                  }
-                }}>
-                  <div className="flex items-center justify-end">
-                    登録者数
-                    <ArrowUpDown className="w-4 h-4 ml-1 opacity-0 group-hover:opacity-100" />
-                  </div>
-                </th>
-                <th className="px-4 py-2 text-right">登録者数増減</th>
-                <th className="px-4 py-2 text-right group cursor-pointer" onClick={() => {
-                  if (sortField === 'monthly_views') {
-                    setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-                  } else {
-                    setSortField('monthly_views');
-                    setSortDirection('desc');
-                  }
-                }}>
-                  <div className="flex items-center justify-end">
-                    月間再生数
-                    <ArrowUpDown className="w-4 h-4 ml-1 opacity-0 group-hover:opacity-100" />
-                  </div>
-                </th>
+                <th className="px-4 py-2 text-right">登録者数</th>
+                <th className="px-4 py-2 text-right">月間再生数</th>
               </tr>
             </thead>
             <tbody>
               {data.items.map((channel) => (
                 <tr key={channel.youtube_url} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedChannels.has(channel.youtube_url)}
-                      onChange={e => {
-                        const newSelected = new Set(selectedChannels);
-                        if (e.target.checked) {
-                          newSelected.add(channel.youtube_url);
-                        } else {
-                          newSelected.delete(channel.youtube_url);
-                        }
-                        setSelectedChannels(newSelected);
-                      }}
-                      className="rounded border-gray-300"
-                    />
-                  </td>
                   <td className="px-4 py-2">{channel.rank}</td>
                   <td className="px-4 py-2">
                     <a 
@@ -372,46 +261,47 @@ const YouTubeDashboard = () => {
                       className="text-blue-600 hover:underline flex items-center"
                     >
                       <img
- src={channel.icon_url}
- alt={`${channel.channel_name}のアイコン`}
- className="w-8 h-8 rounded-full mr-2"
- onError={(e) => {
-   e.target.onerror = null;
-   e.target.src = "https://via.placeholder.com/32";
- }}
-/>
-{channel.channel_name}
-</a>
-</td>
-<td className="px-4 py-2">
- {channel.rank_change === 'new' ? (
-   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-     NEW
-   </span>
- ) : (
-   <>
-     {getRankChangeIcon(channel.rank_change)}
-     <span className="ml-1">{channel.rank_change}</span>
-   </>
- )}
-</td>
-<td className="px-4 py-2 text-right">
- {formatNumber(channel.subscriber_count)}
-</td>
-<td className={`px-4 py-2 text-right ${
- channel.subscriber_change.total > 0 ? 'text-green-600' : 
- channel.subscriber_change.total < 0 ? 'text-red-600' : ''
-}`}>
- {channel.subscriber_change.total !== 0 ? (
-   <>
-     {formatNumber(channel.subscriber_change.total)}
-     <span className="text-sm ml-1">
-       ({channel.subscriber_change.percent}%)
-     </span>
-   </>
- ) : '-'}
-</td>
-<td className="px-4 py-2 text-right">
- {formatNumber(channel.monthly_views)}
-</td>
-</tr>
+                        src={channel.icon_url}
+                        alt={`${channel.channel_name}のアイコン`}
+                        className="w-8 h-8 rounded-full mr-2"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "https://via.placeholder.com/32";
+                        }}
+                      />
+                      {channel.channel_name}
+                    </a>
+                  </td>
+                  <td className="px-4 py-2">
+                    {channel.rank_change === 'new' ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        NEW
+                      </span>
+                    ) : (
+                      <>
+                        {getRankChangeIcon(channel.rank_change)}
+                        <span className="ml-1">{channel.rank_change}</span>
+                      </>
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    {formatNumber(channel.subscriber_count)}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    {formatNumber(channel.monthly_views)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-6">
+          <Pagination />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default YouTubeDashboard;
