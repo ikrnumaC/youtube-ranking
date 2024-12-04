@@ -69,21 +69,25 @@ const fetchData = async (page = 1) => {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
     const loadCurrentPage = async () => {
       try {
         const result = await fetchData(currentPage);
         console.log('Fetch result:', result); 
         if (result && result.items) {
-        setData(result);
-        setTotalItems(result?.pagination?.total_items || 0); 
-        
-        prefetchData(currentPage + 1);
-        prefetchData(currentPage - 1);
+          setData(result);
+          setTotalItems(result?.pagination?.total_items || 0); 
+          
+          prefetchData(currentPage + 1);
+          prefetchData(currentPage - 1);
+        }
       } catch (err) {
         setError(err.message);
       }
     };
+
+    loadCurrentPage();
+}, [currentPage]);
 
     loadCurrentPage();
   }, [currentPage]);
