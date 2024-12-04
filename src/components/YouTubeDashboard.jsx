@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { ArrowUpCircle, ArrowDownCircle, MinusCircle, Download, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 
 const YouTubeDashboard = () => {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState({ items: [], pagination: { total_items: 0 } });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [totalItems, setTotalItems] = useState(0);
@@ -73,6 +73,8 @@ const fetchData = async (page = 1) => {
     const loadCurrentPage = async () => {
       try {
         const result = await fetchData(currentPage);
+        console.log('Fetch result:', result); 
+        if (result && result.items) {
         setData(result);
         setTotalItems(result?.pagination?.total_items || 0); 
         
