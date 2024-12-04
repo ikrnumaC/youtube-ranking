@@ -3,19 +3,16 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { ArrowUpCircle, ArrowDownCircle, MinusCircle, Download, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 
 const YouTubeDashboard = () => {
-  // 基本的なstate
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [totalItems, setTotalItems] = useState(0);
   const [cachedData, setCachedData] = useState({});
 
-  // ページネーション用state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
   
-  // ソートとフィルター用state
-  const [sortField, setSortField] = useState('current_rank');
+  const [sortField, setSortField] = useState('rank');
   const [sortDirection, setSortDirection] = useState('asc');
   const [filters, setFilters] = useState({
     subscribersMin: '',
@@ -25,10 +22,8 @@ const YouTubeDashboard = () => {
     newOnly: false
   });
 
-  // チェックボックス用state
   const [selectedChannels, setSelectedChannels] = useState(new Set());
 
-  // データ取得
   const fetchData = async (page = 1) => {
     if (cachedData[page]) {
       return cachedData[page];
@@ -37,21 +32,20 @@ const YouTubeDashboard = () => {
     try {
       setIsLoading(true);
       const response = await fetch(
-        `https://m4ks023065.execute-api.ap-southeast-2.amazonaws.com/prod/comparison?page=${page}&pageSize=${itemsPerPage}`
+        `https://m4ks023065.execute-api.ap-southeast-2.amazonaws.com/prod/get-youtube-rankings-dynamodb?page=${page}&limit=${itemsPerPage}`
       );
       
       if (!response.ok) throw new Error('API request failed');
       
       const jsonData = await response.json();
-      const parsedData = JSON.parse(jsonData.body);
+      const result = JSON.parse(jsonData.body);
 
-      // キャッシュを更新
       setCachedData(prev => ({
         ...prev,
-        [page]: parsedData
+        [page]: result
       }));
 
-      return parsedData;
+      return result;
     } catch (err) {
       console.error("Fetch error:", err);
       throw err;
@@ -60,9 +54,8 @@ const YouTubeDashboard = () => {
     }
   };
 
-  // プリフェッチ
   const prefetchData = async (page) => {
-    if (!cachedData[page] && page > 0 && page <= Math.ceil(totalItems / itemsPerPage)) {
+    if (!cachedData[page] && page > 0) {
       try {
         await fetchData(page);
       } catch (error) {
@@ -71,15 +64,13 @@ const YouTubeDashboard = () => {
     }
   };
 
-  // メインのデータ取得
   useEffect(() => {
     const loadCurrentPage = async () => {
       try {
-        const parsedData = await fetchData(currentPage);
-        setData(parsedData);
-        setTotalItems(parsedData.pagination.total_items);
+        const result = await fetchData(currentPage);
+        setData(result);
+        setTotalItems(result.pagination.total_items);
         
-        // 次のページと前のページをプリフェッチ
         prefetchData(currentPage + 1);
         prefetchData(currentPage - 1);
       } catch (err) {
@@ -90,23 +81,22 @@ const YouTubeDashboard = () => {
     loadCurrentPage();
   }, [currentPage]);
 
-  // CSVエクスポート関数
   const exportToCSV = () => {
-    if (!data?.comparison?.changes) return;
+    if (!data?.items) return;
 
-    const selectedData = data.comparison.changes.filter(
+    const selectedData = data.items.filter(
       channel => selectedChannels.has(channel.youtube_url)
     );
 
     const csvContent = [
       ['順位', 'チャンネル名', 'URL', '登録者数', '月間再生数', 'ランキング変動'],
       ...selectedData.map(channel => [
-        channel.current_rank,
+        channel.rank,
         channel.channel_name,
         channel.youtube_url,
-        channel.current_stats.subscriber_count,
-        channel.current_stats.monthly_views,
-        channel.rank_change_text
+        channel.subscriber_count,
+        channel.monthly_views,
+        channel.rank_change
       ])
     ].map(row => row.join(',')).join('\n');
 
@@ -117,7 +107,6 @@ const YouTubeDashboard = () => {
     link.click();
   };
 
-  // ページネーションコンポーネント
   const Pagination = () => {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
     
@@ -191,10 +180,10 @@ const YouTubeDashboard = () => {
   };
 
   const getRankChangeIcon = (change) => {
-    if (change === 0) {
+    if (change === 'new' || change === '-') {
       return <MinusCircle className="inline text-gray-500 w-4 h-4" />;
     }
-    return change > 0 ? 
+    return change.startsWith('↑') ? 
       <ArrowUpCircle className="inline text-green-500 w-4 h-4" /> : 
       <ArrowDownCircle className="inline text-red-500 w-4 h-4" />;
   };
@@ -227,7 +216,7 @@ const YouTubeDashboard = () => {
     );
   }
 
-  if (!data || !data.comparison || !data.comparison.changes) {
+  if (!data || !data.items) {
     return null;
   }
 
@@ -236,7 +225,6 @@ const YouTubeDashboard = () => {
   return (
     <div className="space-y-6 p-6 max-w-7xl mx-auto">
       <div className="bg-white rounded-lg shadow p-6">
-        {/* ヘッダー部分 */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold">YouTubeチャンネルランキング分析</h2>
           <div className="flex items-center space-x-4">
@@ -249,12 +237,11 @@ const YouTubeDashboard = () => {
               選択したチャンネルをCSVエクスポート
             </button>
             <p className="text-sm text-gray-600">
-              更新日時: {new Date(data.metadata.generated_at).toLocaleString('ja-JP')}
+              更新日時: {new Date().toLocaleString('ja-JP')}
             </p>
           </div>
         </div>
 
-        {/* フィルター部分 */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">登録者数</label>
@@ -307,7 +294,6 @@ const YouTubeDashboard = () => {
           </div>
         </div>
 
-        {/* テーブル */}
         <div className="overflow-x-auto">
           <table className="min-w-full table-auto">
             <thead>
@@ -315,10 +301,10 @@ const YouTubeDashboard = () => {
                 <th className="px-4 py-2 text-left">
                   <input
                     type="checkbox"
-                    checked={selectedChannels.size === data.comparison.changes.length}
+                    checked={selectedChannels.size === data.items.length}
                     onChange={e => {
                       if (e.target.checked) {
-                        setSelectedChannels(new Set(data.comparison.changes.map(c => c.youtube_url)));
+                        setSelectedChannels(new Set(data.items.map(c => c.youtube_url)));
                       } else {
                         setSelectedChannels(new Set());
                       }
@@ -357,9 +343,9 @@ const YouTubeDashboard = () => {
                   </div>
                 </th>
               </tr>
-              </thead>
+            </thead>
             <tbody>
-              {data.comparison.changes.map((channel) => (
+              {data.items.map((channel) => (
                 <tr key={channel.youtube_url} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-2">
                     <input
@@ -377,7 +363,7 @@ const YouTubeDashboard = () => {
                       className="rounded border-gray-300"
                     />
                   </td>
-                  <td className="px-4 py-2">{channel.current_rank}</td>
+                  <td className="px-4 py-2">{channel.rank}</td>
                   <td className="px-4 py-2">
                     <a 
                       href={channel.youtube_url} 
@@ -386,80 +372,46 @@ const YouTubeDashboard = () => {
                       className="text-blue-600 hover:underline flex items-center"
                     >
                       <img
-                        src={channel.icon_url}
-                        alt={`${channel.channel_name}のアイコン`}
-                        className="w-8 h-8 rounded-full mr-2"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = "https://via.placeholder.com/32";
-                        }}
-                      />
-                      {channel.channel_name}
-                    </a>
-                  </td>
-                  <td className="px-4 py-2">
-                    {channel.rank_change_text === 'new' ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        NEW
-                      </span>
-                    ) : (
-                      <>
-                        {getRankChangeIcon(channel.rank_change)}
-                        <span className="ml-1">{channel.rank_change_text}</span>
-                      </>
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    {formatNumber(channel.current_stats.subscriber_count)}
-                  </td>
-                  <td className={`px-4 py-2 text-right ${
-                    channel.subscriber_change.total > 0 ? 'text-green-600' : 
-                    channel.subscriber_change.total < 0 ? 'text-red-600' : ''
-                  }`}>
-                    {channel.subscriber_change.total ? (
-                      <>
-                        {formatNumber(channel.subscriber_change.total)}
-                        <span className="text-sm ml-1">
-                          ({channel.subscriber_change.percent.toFixed(2)}%)
-                        </span>
-                      </>
-                    ) : '-'}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    {formatNumber(channel.current_stats.monthly_views)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* ページネーション */}
-        <div className="mt-6 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <select
-              value={itemsPerPage}
-              onChange={e => {
-                setItemsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="rounded border-gray-300"
-            >
-              <option value={20}>20件</option>
-              <option value={50}>50件</option>
-              <option value={100}>100件</option>
-            </select>
-            <span className="text-sm text-gray-600">
-              全{totalItems}件中 
-              {(currentPage - 1) * itemsPerPage + 1}-
-              {Math.min(currentPage * itemsPerPage, totalItems)}件を表示
-            </span>
-          </div>
-          <Pagination />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default YouTubeDashboard;
+ src={channel.icon_url}
+ alt={`${channel.channel_name}のアイコン`}
+ className="w-8 h-8 rounded-full mr-2"
+ onError={(e) => {
+   e.target.onerror = null;
+   e.target.src = "https://via.placeholder.com/32";
+ }}
+/>
+{channel.channel_name}
+</a>
+</td>
+<td className="px-4 py-2">
+ {channel.rank_change === 'new' ? (
+   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+     NEW
+   </span>
+ ) : (
+   <>
+     {getRankChangeIcon(channel.rank_change)}
+     <span className="ml-1">{channel.rank_change}</span>
+   </>
+ )}
+</td>
+<td className="px-4 py-2 text-right">
+ {formatNumber(channel.subscriber_count)}
+</td>
+<td className={`px-4 py-2 text-right ${
+ channel.subscriber_change.total > 0 ? 'text-green-600' : 
+ channel.subscriber_change.total < 0 ? 'text-red-600' : ''
+}`}>
+ {channel.subscriber_change.total !== 0 ? (
+   <>
+     {formatNumber(channel.subscriber_change.total)}
+     <span className="text-sm ml-1">
+       ({channel.subscriber_change.percent}%)
+     </span>
+   </>
+ ) : '-'}
+</td>
+<td className="px-4 py-2 text-right">
+ {formatNumber(channel.monthly_views)}
+</td>
+</tr>
