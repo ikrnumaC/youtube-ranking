@@ -221,6 +221,7 @@ const fetchData = async (page = 1) => {
   }
 
   if (!data || !data.items) {
+    console.log('Data check:', { data }); 
     return null;
   }
 
