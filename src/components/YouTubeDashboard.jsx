@@ -24,34 +24,40 @@ const YouTubeDashboard = () => {
 
   const [selectedChannels, setSelectedChannels] = useState(new Set());
 
-  const fetchData = async (page = 1) => {
-    if (cachedData[page]) {
-      return cachedData[page];
-    }
+const fetchData = async (page = 1) => {
+  if (cachedData[page]) {
+    return cachedData[page];
+  }
 
-    try {
-      setIsLoading(true);
-      const response = await fetch(
-        `https://m4ks023065.execute-api.ap-southeast-2.amazonaws.com/prod/get-youtube-rankings-dynamodb?page=${page}&limit=${itemsPerPage}`
-      );
-      
-      if (!response.ok) throw new Error('API request failed');
-      
-      const jsonData = await response.json();
+  try {
+    setIsLoading(true);
+    const response = await fetch(
+      `https://m4ks023065.execute-api.ap-southeast-2.amazonaws.com/prod/get-youtube-rankings-dynamodb?page=${page}&limit=${itemsPerPage}`
+    );
+    
+    if (!response.ok) throw new Error('API request failed');
+    
+    const jsonData = await response.json();
+    
+    // レスポンスの構造をログで確認
+    console.log('API Response:', jsonData);
 
-      setCachedData(prev => ({
-        ...prev,
-        [page]: result
-      }));
+    // bodyが文字列の場合はパース
+    const data = typeof jsonData.body === 'string' ? JSON.parse(jsonData.body) : jsonData.body;
 
-      return result;
-    } catch (err) {
-      console.error("Fetch error:", err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    setCachedData(prev => ({
+      ...prev,
+      [page]: data
+    }));
+
+    return data;
+  } catch (err) {
+    console.error("Fetch error:", err);
+    throw err;
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const prefetchData = async (page) => {
     if (!cachedData[page] && page > 0) {
