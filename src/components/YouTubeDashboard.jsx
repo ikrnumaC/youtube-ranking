@@ -74,7 +74,7 @@ const fetchData = async (page = 1) => {
       try {
         const result = await fetchData(currentPage);
         setData(result);
-        setTotalItems(result?.items?.length || 0); 
+        setTotalItems(result?.pagination?.total_items || 0); 
         
         prefetchData(currentPage + 1);
         prefetchData(currentPage - 1);
