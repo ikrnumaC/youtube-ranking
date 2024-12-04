@@ -38,7 +38,6 @@ const YouTubeDashboard = () => {
       if (!response.ok) throw new Error('API request failed');
       
       const jsonData = await response.json();
-      const result = JSON.parse(jsonData.body);
 
       setCachedData(prev => ({
         ...prev,
