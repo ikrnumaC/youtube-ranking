@@ -1,89 +1,110 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { ArrowUpCircle, ArrowDownCircle, MinusCircle, Download, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 
 const YouTubeDashboard = () => {
-  const [data, setData] = useState({ items: [], pagination: { total_items: 0 } });
+  const [data, setData] = useState({ 
+    items: [], 
+    pagination: { 
+      current_page: 1,
+      total_items: 0, 
+      total_pages: 0,
+      items_per_page: 20
+    } 
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [totalItems, setTotalItems] = useState(0);
-  const [cachedData, setCachedData] = useState({});
-
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(20);
-  
-  const [sortField, setSortField] = useState('rank');
-  const [sortDirection, setSortDirection] = useState('asc');
-  const [filters, setFilters] = useState({
-    subscribersMin: '',
-    subscribersMax: '',
-    viewsMin: '',
-    viewsMax: '',
-    newOnly: false
-  });
-
   const [selectedChannels, setSelectedChannels] = useState(new Set());
 
-const fetchData = async (page = 1) => {
-  if (cachedData[page]) {
-    return cachedData[page];
-  }
-
-  try {
+  const fetchData = async (page = 1) => {
     setIsLoading(true);
-    const response = await fetch(
-      `https://m4ks023065.execute-api.ap-southeast-2.amazonaws.com/prod/get-youtube-rankings-dynamodb?page=${page}&limit=${itemsPerPage}`
-    );
-    
-    if (!response.ok) throw new Error('API request failed');
-    
-    const jsonData = await response.json();
-    console.log('API Response:', jsonData);
+    setError(null);
 
-    setCachedData(prev => ({
-      ...prev,
-      [page]: jsonData
-    }));
+    try {
+      const response = await fetch(
+        `https://m4ks023065.execute-api.ap-southeast-2.amazonaws.com/prod/get-youtube-rankings-dynamodb?page=${page}&limit=20`
+      );
 
-    return jsonData;
-
-  } catch (err) {
-    console.error("Fetch error:", err);
-    throw err;
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-  const prefetchData = async (page) => {
-    if (!cachedData[page] && page > 0) {
-      try {
-        await fetchData(page);
-      } catch (error) {
-        console.error(`Prefetch error for page ${page}:`, error);
+      if (!response.ok) {
+        throw new Error(`APIリクエストエラー (${response.status})`);
       }
+
+      const jsonData = await response.json();
+      if (!jsonData.items || !Array.isArray(jsonData.items)) {
+        throw new Error('無効なデータ形式です');
+      }
+
+      setData(jsonData);
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-useEffect(() => {
-    const loadCurrentPage = async () => {
-      try {
-        const result = await fetchData(currentPage);
-        console.log('Fetch result:', result); 
-        if (result && result.items) {
-          setData(result);
-          setTotalItems(result?.pagination?.total_items || 0); 
-          
-          prefetchData(currentPage + 1);
-          prefetchData(currentPage - 1);
+  useEffect(() => {
+    fetchData(currentPage);
+  }, [currentPage]);
+
+  const Pagination = () => {
+    const { total_pages = 1 } = data.pagination || {};
+
+    const getPageNumbers = () => {
+      const pages = [];
+      if (total_pages <= 7) {
+        for (let i = 1; i <= total_pages; i++) {
+          pages.push(i);
         }
-      } catch (err) {
-        setError(err.message);
+      } else {
+        if (currentPage <= 3) {
+          pages.push(1, 2, 3, 4, 5, '...', total_pages);
+        } else if (currentPage >= total_pages - 2) {
+          pages.push(1, '...', total_pages - 4, total_pages - 3, total_pages - 2, total_pages - 1, total_pages);
+        } else {
+          pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', total_pages);
+        }
       }
+      return pages;
     };
 
-    loadCurrentPage();
-}, [currentPage]);
+    return (
+      <div className="flex items-center justify-center space-x-2">
+        <button
+          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+          disabled={currentPage === 1 || isLoading}
+          className="px-3 py-1 rounded border disabled:opacity-50"
+        >
+          {'<'}
+        </button>
+
+        {getPageNumbers().map((page, index) => (
+          <React.Fragment key={index}>
+            {page === '...' ? (
+              <span className="px-3 py-1">...</span>
+            ) : (
+              <button
+                onClick={() => page !== currentPage && setCurrentPage(page)}
+                disabled={isLoading}
+                className={`px-3 py-1 rounded border ${
+                  currentPage === page ? 'bg-blue-500 text-white' : ''
+                }`}
+              >
+                {page}
+              </button>
+            )}
+          </React.Fragment>
+        ))}
+
+        <button
+          onClick={() => setCurrentPage(prev => Math.min(prev + 1, total_pages))}
+          disabled={currentPage === total_pages || isLoading}
+          className="px-3 py-1 rounded border disabled:opacity-50"
+        >
+          {'>'}
+        </button>
+      </div>
+    );
+  };
 
   const exportToCSV = () => {
     if (!data?.items) return;
@@ -110,92 +131,22 @@ useEffect(() => {
     link.download = `youtube_ranking_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
-  const Pagination = () => {
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    
-    const getPageNumbers = () => {
-      const pages = [];
-      const showPageNumbers = (start, end) => {
-        for (let i = start; i <= end; i++) {
-          pages.push(i);
-        }
-      };
 
-      if (totalPages <= 7) {
-        showPageNumbers(1, totalPages);
-      } else {
-        if (currentPage <= 3) {
-          showPageNumbers(1, 5);
-          pages.push('...');
-          pages.push(totalPages);
-        } else if (currentPage >= totalPages - 2) {
-          pages.push(1);
-          pages.push('...');
-          showPageNumbers(totalPages - 4, totalPages);
-        } else {
-          pages.push(1);
-          pages.push('...');
-          showPageNumbers(currentPage - 1, currentPage + 1);
-          pages.push('...');
-          pages.push(totalPages);
-        }
-      }
-
-      return pages;
-    };
-
-    return (
-      <div className="flex items-center justify-center space-x-2">
-        <button
-          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-          disabled={currentPage === 1}
-          className="px-3 py-1 rounded border disabled:opacity-50"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        
-        {getPageNumbers().map((page, index) => (
-          <React.Fragment key={index}>
-            {page === '...' ? (
-              <span className="px-3 py-1">...</span>
-            ) : (
-              <button
-                onClick={() => setCurrentPage(page)}
-                className={`px-3 py-1 rounded border ${
-                  currentPage === page ? 'bg-blue-500 text-white' : ''
-                }`}
-              >
-                {page}
-              </button>
-            )}
-          </React.Fragment>
-        ))}
-
-        <button
-          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-          disabled={currentPage === totalPages}
-          className="px-3 py-1 rounded border disabled:opacity-50"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-      </div>
-    );
-  };
-
-  const getRankChangeIcon = (change) => {
+  const getRankChangeDisplay = (change) => {
     if (change === 'new' || change === '-') {
-      return <MinusCircle className="inline text-gray-500 w-4 h-4" />;
+      return '-';
     }
     return change.startsWith('↑') ? 
-      <ArrowUpCircle className="inline text-green-500 w-4 h-4" /> : 
-      <ArrowDownCircle className="inline text-red-500 w-4 h-4" />;
+      `↑${change.slice(1)}` : 
+      `↓${change.slice(1)}`;
   };
+
+  const formatNumber = num => new Intl.NumberFormat('ja-JP').format(num);
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4"></div>
           <p>データを読み込んでいます...</p>
         </div>
       </div>
@@ -219,13 +170,6 @@ useEffect(() => {
     );
   }
 
-  if (!data || !data.items) {
-    console.log('Data check:', { data }); 
-    return null;
-  }
-
-  const formatNumber = num => new Intl.NumberFormat('ja-JP').format(num);
-
   return (
     <div className="space-y-6 p-6 max-w-7xl mx-auto">
       <div className="bg-white rounded-lg shadow p-6">
@@ -235,10 +179,9 @@ useEffect(() => {
             <button
               onClick={exportToCSV}
               disabled={selectedChannels.size === 0}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
             >
-              <Download className="w-4 h-4 mr-2" />
-              選択したチャンネルをCSVエクスポート
+              CSVダウンロード
             </button>
           </div>
         </div>
@@ -247,6 +190,7 @@ useEffect(() => {
           <table className="min-w-full table-auto">
             <thead>
               <tr className="bg-gray-100">
+                <th className="px-4 py-2 text-left">選択</th>
                 <th className="px-4 py-2 text-left">順位</th>
                 <th className="px-4 py-2 text-left">チャンネル名</th>
                 <th className="px-4 py-2 text-left">変動</th>
@@ -257,6 +201,22 @@ useEffect(() => {
             <tbody>
               {data.items.map((channel) => (
                 <tr key={channel.youtube_url} className="border-b hover:bg-gray-50">
+                  <td className="px-4 py-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedChannels.has(channel.youtube_url)}
+                      onChange={(e) => {
+                        const newSelected = new Set(selectedChannels);
+                        if (e.target.checked) {
+                          newSelected.add(channel.youtube_url);
+                        } else {
+                          newSelected.delete(channel.youtube_url);
+                        }
+                        setSelectedChannels(newSelected);
+                      }}
+                      className="rounded border-gray-300"
+                    />
+                  </td>
                   <td className="px-4 py-2">{channel.rank}</td>
                   <td className="px-4 py-2">
                     <a 
@@ -283,10 +243,9 @@ useEffect(() => {
                         NEW
                       </span>
                     ) : (
-                      <>
-                        {getRankChangeIcon(channel.rank_change)}
-                        <span className="ml-1">{channel.rank_change}</span>
-                      </>
+                      <span className={channel.rank_change.startsWith('↑') ? 'text-green-600' : 'text-red-600'}>
+                        {getRankChangeDisplay(channel.rank_change)}
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-2 text-right">
