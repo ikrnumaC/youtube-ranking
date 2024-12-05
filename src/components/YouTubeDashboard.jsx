@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 const YouTubeDashboard = () => {
   const [data, setData] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedItems, setSelectedItems] = useState(() => {
@@ -14,6 +15,7 @@ const YouTubeDashboard = () => {
     viewsMin: '',
     viewsMax: ''
   });
+  const itemsPerPage = 20;
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -73,10 +75,12 @@ const YouTubeDashboard = () => {
       items: filtered,
       pagination: {
         ...prev.pagination,
-        total_items: filtered.length,
-        total_pages: Math.ceil(filtered.length / prev.pagination.per_page)
+        current_page: 1,
+        total_pages: Math.ceil(filtered.length / itemsPerPage),
+        total_items: filtered.length
       }
     }));
+    setCurrentPage(1);
   };
 
   const handleCSVDownload = () => {
@@ -121,11 +125,12 @@ const YouTubeDashboard = () => {
 
   if (!data) return null;
 
-  const { pagination } = data;
   const currentItems = data.items.slice(
-    (pagination.current_page - 1) * pagination.per_page,
-    pagination.current_page * pagination.per_page
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
+
+  const totalPages = Math.ceil(data.items.length / itemsPerPage);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -263,30 +268,18 @@ const YouTubeDashboard = () => {
 
       <div className="mt-6 flex justify-center gap-2">
         <button
-          onClick={() => setData(prev => ({
-            ...prev,
-            pagination: {
-              ...prev.pagination,
-              current_page: Math.max(1, prev.pagination.current_page - 1)
-            }
-          }))}
-          disabled={pagination.current_page === 1}
+          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
           className="px-4 py-2 border rounded disabled:opacity-50"
         >
           前へ
         </button>
         <span className="px-4 py-2">
-          {pagination.current_page} / {pagination.total_pages}
+          {currentPage} / {totalPages}
         </span>
         <button
-          onClick={() => setData(prev => ({
-            ...prev,
-            pagination: {
-              ...prev.pagination,
-              current_page: Math.min(prev.pagination.total_pages, prev.pagination.current_page + 1)
-            }
-          }))}
-          disabled={pagination.current_page === pagination.total_pages}
+          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          disabled={currentPage === totalPages}
           className="px-4 py-2 border rounded disabled:opacity-50"
         >
           次へ
