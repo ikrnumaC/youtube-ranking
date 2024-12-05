@@ -1,25 +1,13 @@
 import React, { useState, useEffect } from 'react';
 
 const YouTubeDashboard = () => {
-  // 全てのデータを保持するキャッシュ
   const [allData, setAllData] = useState(null);
-  // 現在のページに表示するデータ
-  const [displayData, setDisplayData] = useState({ 
-    items: [], 
-    pagination: {
-      current_page: 1,
-      total_pages: 1,
-      total_items: 0,
-      per_page: 20
-    } 
-  });
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
-  // データの初回取得
-  const fetchAllData = async () => {
+  const fetchData = async () => {
     setIsLoading(true);
     try {
       const response = await fetch(
@@ -31,9 +19,8 @@ const YouTubeDashboard = () => {
       }
 
       const jsonData = await response.json();
-      const parsedData = JSON.parse(jsonData.body);
-      setAllData(parsedData.items);
-      updateDisplayData(parsedData.items, 1);
+      const data = JSON.parse(jsonData.body);
+      setAllData(data);
     } catch (err) {
       console.error('Fetch error:', err);
       setError(err.message);
@@ -42,63 +29,34 @@ const YouTubeDashboard = () => {
     }
   };
 
-  // 表示データの更新
-  const updateDisplayData = (items, page) => {
-    const start = (page - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    const paginatedItems = items.slice(start, end);
-    
-    setDisplayData({
-      items: paginatedItems,
-      pagination: {
-        current_page: page,
-        total_pages: Math.ceil(items.length / itemsPerPage),
-        total_items: items.length,
-        per_page: itemsPerPage
-      }
-    });
-  };
-
-  // 初回マウント時のみデータを取得
   useEffect(() => {
-    if (!allData) {
-      fetchAllData();
-    }
+    fetchData();
   }, []);
 
-  // ページ変更時の処理
-  useEffect(() => {
-    if (allData) {
-      updateDisplayData(allData, currentPage);
-    }
-  }, [currentPage, allData]);
-
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-center">
-          <p>データを読み込み中...</p>
-        </div>
-      </div>
-    );
+    return <div className="flex items-center justify-center p-8">データを読み込み中...</div>;
   }
 
   if (error) {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <div className="bg-red-50 border-l-4 border-red-500 p-4">
-          <h3 className="text-red-800 font-medium">エラーが発生しました</h3>
-          <p className="text-red-700">{error}</p>
-          <button 
-            onClick={fetchAllData}
-            className="mt-3 bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-2 px-4 rounded"
-          >
-            再試行
-          </button>
-        </div>
+      <div className="p-6 max-w-2xl mx-auto bg-red-50 border-l-4 border-red-500">
+        <h3 className="text-red-800 font-medium">エラーが発生しました</h3>
+        <p className="text-red-700">{error}</p>
+        <button onClick={fetchData} className="mt-3 bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-2 px-4 rounded">
+          再試行
+        </button>
       </div>
     );
   }
+
+  if (!allData || !allData.items) return null;
+
+  const currentItems = allData.items.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const totalPages = Math.ceil(allData.items.length / itemsPerPage);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -115,7 +73,7 @@ const YouTubeDashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {displayData.items.map((channel) => (
+            {currentItems.map((channel) => (
               <tr key={channel.youtube_url} className="border-b hover:bg-gray-50">
                 <td className="px-4 py-2">{channel.rank}</td>
                 <td className="px-4 py-2">
@@ -158,11 +116,11 @@ const YouTubeDashboard = () => {
           前へ
         </button>
         <span className="px-4 py-2">
-          {currentPage} / {displayData.pagination.total_pages}
+          {currentPage} / {totalPages}
         </span>
         <button
-          onClick={() => setCurrentPage(p => Math.min(displayData.pagination.total_pages, p + 1))}
-          disabled={currentPage === displayData.pagination.total_pages}
+          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          disabled={currentPage === totalPages}
           className="px-4 py-2 border rounded disabled:opacity-50"
         >
           次へ
