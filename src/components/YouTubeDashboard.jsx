@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
 const YouTubeDashboard = () => {
-  const [data, setData] = useState({ items: [], pagination: {} });
+  const [data, setData] = useState({ 
+    items: [], 
+    pagination: {
+      current_page: 1,
+      total_pages: 1,
+      total_items: 0,
+      per_page: 20
+    } 
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -18,8 +26,11 @@ const YouTubeDashboard = () => {
       }
 
       const jsonData = await response.json();
-      setData(jsonData);
+      // APIレスポンスのbodyをパース
+      const parsedData = JSON.parse(jsonData.body);
+      setData(parsedData);
     } catch (err) {
+      console.error('Fetch error:', err);
       setError(err.message);
     } finally {
       setIsLoading(false);
@@ -31,18 +42,36 @@ const YouTubeDashboard = () => {
   }, [currentPage]);
 
   if (isLoading) {
-    return <div className="p-4">データを読み込み中...</div>;
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <p>データを読み込み中...</p>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="p-4 text-red-600">{error}</div>;
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4">
+          <h3 className="text-red-800 font-medium">エラーが発生しました</h3>
+          <p className="text-red-700">{error}</p>
+          <button 
+            onClick={() => fetchData(currentPage)}
+            className="mt-3 bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-2 px-4 rounded"
+          >
+            再試行
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">YouTubeチャンネルランキング</h1>
       
-      {/* テーブル */}
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white">
           <thead className="bg-gray-100">
@@ -88,7 +117,6 @@ const YouTubeDashboard = () => {
         </table>
       </div>
 
-      {/* ページネーション */}
       <div className="mt-6 flex justify-center gap-2">
         <button
           onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
