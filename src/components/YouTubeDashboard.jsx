@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
 const YouTubeDashboard = () => {
-  const [data, setData] = useState({ 
+  // 全てのデータを保持するキャッシュ
+  const [allData, setAllData] = useState(null);
+  // 現在のページに表示するデータ
+  const [displayData, setDisplayData] = useState({ 
     items: [], 
     pagination: {
       current_page: 1,
@@ -13,12 +16,14 @@ const YouTubeDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
-  const fetchData = async (page) => {
+  // データの初回取得
+  const fetchAllData = async () => {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `https://m4ks023065.execute-api.ap-southeast-2.amazonaws.com/prod/get-youtube-rankings-dynamodb?page=${page}`
+        'https://m4ks023065.execute-api.ap-southeast-2.amazonaws.com/prod/get-youtube-rankings-dynamodb?page=1'
       );
       
       if (!response.ok) {
@@ -26,9 +31,9 @@ const YouTubeDashboard = () => {
       }
 
       const jsonData = await response.json();
-      // APIレスポンスのbodyをパース
       const parsedData = JSON.parse(jsonData.body);
-      setData(parsedData);
+      setAllData(parsedData.items);
+      updateDisplayData(parsedData.items, 1);
     } catch (err) {
       console.error('Fetch error:', err);
       setError(err.message);
@@ -37,9 +42,36 @@ const YouTubeDashboard = () => {
     }
   };
 
+  // 表示データの更新
+  const updateDisplayData = (items, page) => {
+    const start = (page - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const paginatedItems = items.slice(start, end);
+    
+    setDisplayData({
+      items: paginatedItems,
+      pagination: {
+        current_page: page,
+        total_pages: Math.ceil(items.length / itemsPerPage),
+        total_items: items.length,
+        per_page: itemsPerPage
+      }
+    });
+  };
+
+  // 初回マウント時のみデータを取得
   useEffect(() => {
-    fetchData(currentPage);
-  }, [currentPage]);
+    if (!allData) {
+      fetchAllData();
+    }
+  }, []);
+
+  // ページ変更時の処理
+  useEffect(() => {
+    if (allData) {
+      updateDisplayData(allData, currentPage);
+    }
+  }, [currentPage, allData]);
 
   if (isLoading) {
     return (
@@ -58,7 +90,7 @@ const YouTubeDashboard = () => {
           <h3 className="text-red-800 font-medium">エラーが発生しました</h3>
           <p className="text-red-700">{error}</p>
           <button 
-            onClick={() => fetchData(currentPage)}
+            onClick={fetchAllData}
             className="mt-3 bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-2 px-4 rounded"
           >
             再試行
@@ -83,7 +115,7 @@ const YouTubeDashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {data.items.map((channel) => (
+            {displayData.items.map((channel) => (
               <tr key={channel.youtube_url} className="border-b hover:bg-gray-50">
                 <td className="px-4 py-2">{channel.rank}</td>
                 <td className="px-4 py-2">
@@ -126,11 +158,11 @@ const YouTubeDashboard = () => {
           前へ
         </button>
         <span className="px-4 py-2">
-          {currentPage} / {data.pagination.total_pages}
+          {currentPage} / {displayData.pagination.total_pages}
         </span>
         <button
-          onClick={() => setCurrentPage(p => Math.min(data.pagination.total_pages, p + 1))}
-          disabled={currentPage === data.pagination.total_pages}
+          onClick={() => setCurrentPage(p => Math.min(displayData.pagination.total_pages, p + 1))}
+          disabled={currentPage === displayData.pagination.total_pages}
           className="px-4 py-2 border rounded disabled:opacity-50"
         >
           次へ
