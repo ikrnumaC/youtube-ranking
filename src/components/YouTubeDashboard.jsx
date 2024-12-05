@@ -16,8 +16,12 @@ const YouTubeDashboard = () => {
     viewsMin: '',
     viewsMax: ''
   });
-
-  const itemsPerPage = 20;
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    total_pages: 1,
+    total_items: 0,
+    per_page: 20
+  });
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -34,6 +38,7 @@ const YouTubeDashboard = () => {
       const data = typeof jsonData.body === 'string' ? JSON.parse(jsonData.body) : jsonData.body;
       setAllData(data);
       setDisplayData(data.items);
+      setPagination(data.pagination);
     } catch (err) {
       console.error('Fetch error:', err);
       setError(err.message);
@@ -75,6 +80,12 @@ const YouTubeDashboard = () => {
 
     setDisplayData(filtered);
     setCurrentPage(1);
+    setPagination(prev => ({
+      ...prev,
+      current_page: 1,
+      total_pages: Math.ceil(filtered.length / pagination.per_page),
+      total_items: filtered.length
+    }));
   };
 
   const handleCSVDownload = () => {
@@ -119,12 +130,8 @@ const YouTubeDashboard = () => {
 
   if (!displayData) return null;
 
-  const currentItems = displayData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const totalPages = Math.ceil(displayData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * pagination.per_page;
+  const currentItems = displayData.slice(startIndex, startIndex + pagination.per_page);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -269,11 +276,11 @@ const YouTubeDashboard = () => {
           前へ
         </button>
         <span className="px-4 py-2">
-          {currentPage} / {totalPages}
+          {currentPage} / {pagination.total_pages}
         </span>
         <button
-          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-          disabled={currentPage === totalPages}
+          onClick={() => setCurrentPage(p => Math.min(pagination.total_pages, p + 1))}
+          disabled={currentPage === pagination.total_pages}
           className="px-4 py-2 border rounded disabled:opacity-50"
         >
           次へ
