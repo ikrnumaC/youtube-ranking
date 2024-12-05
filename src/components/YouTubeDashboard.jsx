@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 const YouTubeDashboard = () => {
-  const [allData, setAllData] = useState(null);
-  const [displayData, setDisplayData] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedItems, setSelectedItems] = useState(() => {
@@ -15,12 +13,6 @@ const YouTubeDashboard = () => {
     subscriberMax: '',
     viewsMin: '',
     viewsMax: ''
-  });
-  const [pagination, setPagination] = useState({
-    current_page: 1,
-    total_pages: 1,
-    total_items: 0,
-    per_page: 20
   });
 
   const fetchData = async () => {
@@ -36,9 +28,7 @@ const YouTubeDashboard = () => {
 
       const jsonData = await response.json();
       const data = typeof jsonData.body === 'string' ? JSON.parse(jsonData.body) : jsonData.body;
-      setAllData(data);
-      setDisplayData(data.items);
-      setPagination(data.pagination);
+      setData(data);
     } catch (err) {
       console.error('Fetch error:', err);
       setError(err.message);
@@ -64,9 +54,9 @@ const YouTubeDashboard = () => {
   };
 
   const applyFilters = () => {
-    if (!allData) return;
+    if (!data) return;
 
-    let filtered = allData.items.filter(item => {
+    let filtered = data.items.filter(item => {
       const subscriber = parseInt(item.subscriber_count.replace(/,/g, ''));
       const views = parseInt(item.monthly_views.replace(/,/g, ''));
       
@@ -78,20 +68,21 @@ const YouTubeDashboard = () => {
       return meetsSubscriberMin && meetsSubscriberMax && meetsViewsMin && meetsViewsMax;
     });
 
-    setDisplayData(filtered);
-    setCurrentPage(1);
-    setPagination(prev => ({
+    setData(prev => ({
       ...prev,
-      current_page: 1,
-      total_pages: Math.ceil(filtered.length / pagination.per_page),
-      total_items: filtered.length
+      items: filtered,
+      pagination: {
+        ...prev.pagination,
+        total_items: filtered.length,
+        total_pages: Math.ceil(filtered.length / prev.pagination.per_page)
+      }
     }));
   };
 
   const handleCSVDownload = () => {
-    if (!displayData) return;
+    if (!data) return;
 
-    const selectedChannels = displayData.filter(channel => 
+    const selectedChannels = data.items.filter(channel => 
       selectedItems.includes(channel.youtube_url)
     );
 
@@ -128,10 +119,13 @@ const YouTubeDashboard = () => {
     );
   }
 
-  if (!displayData) return null;
+  if (!data) return null;
 
-  const startIndex = (currentPage - 1) * pagination.per_page;
-  const currentItems = displayData.slice(startIndex, startIndex + pagination.per_page);
+  const { pagination } = data;
+  const currentItems = data.items.slice(
+    (pagination.current_page - 1) * pagination.per_page,
+    pagination.current_page * pagination.per_page
+  );
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -269,18 +263,30 @@ const YouTubeDashboard = () => {
 
       <div className="mt-6 flex justify-center gap-2">
         <button
-          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-          disabled={currentPage === 1}
+          onClick={() => setData(prev => ({
+            ...prev,
+            pagination: {
+              ...prev.pagination,
+              current_page: Math.max(1, prev.pagination.current_page - 1)
+            }
+          }))}
+          disabled={pagination.current_page === 1}
           className="px-4 py-2 border rounded disabled:opacity-50"
         >
           前へ
         </button>
         <span className="px-4 py-2">
-          {currentPage} / {pagination.total_pages}
+          {pagination.current_page} / {pagination.total_pages}
         </span>
         <button
-          onClick={() => setCurrentPage(p => Math.min(pagination.total_pages, p + 1))}
-          disabled={currentPage === pagination.total_pages}
+          onClick={() => setData(prev => ({
+            ...prev,
+            pagination: {
+              ...prev.pagination,
+              current_page: Math.min(prev.pagination.total_pages, prev.pagination.current_page + 1)
+            }
+          }))}
+          disabled={pagination.current_page === pagination.total_pages}
           className="px-4 py-2 border rounded disabled:opacity-50"
         >
           次へ
