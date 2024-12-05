@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 const YouTubeDashboard = () => {
   const [data, setData] = useState(null);
+  const [filteredItems, setFilteredItems] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,6 +32,7 @@ const YouTubeDashboard = () => {
       const jsonData = await response.json();
       const data = typeof jsonData.body === 'string' ? JSON.parse(jsonData.body) : jsonData.body;
       setData(data);
+      setFilteredItems(data.items);
     } catch (err) {
       console.error('Fetch error:', err);
       setError(err.message);
@@ -70,23 +72,16 @@ const YouTubeDashboard = () => {
       return meetsSubscriberMin && meetsSubscriberMax && meetsViewsMin && meetsViewsMax;
     });
 
-    setData(prev => ({
-      ...prev,
-      items: filtered,
-      pagination: {
-        ...prev.pagination,
-        current_page: 1,
-        total_pages: Math.ceil(filtered.length / itemsPerPage),
-        total_items: filtered.length
-      }
-    }));
+    // ランキング順にソート
+    filtered.sort((a, b) => parseInt(a.rank) - parseInt(b.rank));
+    setFilteredItems(filtered);
     setCurrentPage(1);
   };
 
   const handleCSVDownload = () => {
-    if (!data) return;
+    if (!filteredItems) return;
 
-    const selectedChannels = data.items.filter(channel => 
+    const selectedChannels = filteredItems.filter(channel => 
       selectedItems.includes(channel.youtube_url)
     );
 
@@ -123,14 +118,11 @@ const YouTubeDashboard = () => {
     );
   }
 
-  if (!data) return null;
+  if (!filteredItems) return null;
 
-  const currentItems = data.items.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const totalPages = Math.ceil(data.items.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentItems = filteredItems.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
