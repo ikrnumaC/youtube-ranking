@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 const YouTubeDashboard = () => {
   const [data, setData] = useState(null);
   const [filteredItems, setFilteredItems] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedItems, setSelectedItems] = useState(() => {
@@ -15,6 +16,7 @@ const YouTubeDashboard = () => {
     viewsMin: '',
     viewsMax: ''
   });
+  const itemsPerPage = 20;
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -70,8 +72,10 @@ const YouTubeDashboard = () => {
       return meetsSubscriberMin && meetsSubscriberMax && meetsViewsMin && meetsViewsMax;
     });
 
+    // ランキング順にソート
     filtered.sort((a, b) => parseInt(a.rank) - parseInt(b.rank));
     setFilteredItems(filtered);
+    setCurrentPage(1);
   };
 
   const handleCSVDownload = () => {
@@ -115,6 +119,10 @@ const YouTubeDashboard = () => {
   }
 
   if (!filteredItems) return null;
+
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentItems = filteredItems.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -196,7 +204,7 @@ const YouTubeDashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredItems.map((channel) => (
+            {currentItems.map((channel) => (
               <tr key={channel.youtube_url} className="border-b hover:bg-gray-50">
                 <td className="px-4 py-2">
                   <input 
@@ -248,6 +256,26 @@ const YouTubeDashboard = () => {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="mt-6 flex justify-center gap-2">
+        <button
+          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          disabled={currentPage === 1}
+          className="px-4 py-2 border rounded disabled:opacity-50"
+        >
+          前へ
+        </button>
+        <span className="px-4 py-2">
+          {currentPage} / {totalPages}
+        </span>
+        <button
+          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          disabled={currentPage === totalPages}
+          className="px-4 py-2 border rounded disabled:opacity-50"
+        >
+          次へ
+        </button>
       </div>
     </div>
   );
