@@ -19,8 +19,11 @@ const YouTubeDashboard = () => {
       }
 
       const jsonData = await response.json();
-      const data = JSON.parse(jsonData.body);
-      setAllData(data);
+      const data = typeof jsonData.body === 'string' ? JSON.parse(jsonData.body) : jsonData.body;
+      setAllData({
+        items: data.items,
+        total: data.pagination.total_items
+      });
     } catch (err) {
       console.error('Fetch error:', err);
       setError(err.message);
