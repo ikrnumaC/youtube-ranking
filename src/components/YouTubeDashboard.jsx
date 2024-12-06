@@ -5,7 +5,7 @@ const YoutubeRanking = () => {
   const itemsPerPage = 20;
   const [sortKey, setSortKey] = useState('current_rank');
   const [sortOrder, setSortOrder] = useState('asc');
-  const [data, setData] = useState({ comparison: [], metadata: {} });
+  const [data, setData] = useState({ comparison: [], metadata: { total_channels: 0 } });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -18,10 +18,11 @@ const YoutubeRanking = () => {
           throw new Error('データの取得に失敗しました');
         }
         const jsonData = await response.json();
+        console.log('Fetched data:', jsonData); // データ確認用
         setData(jsonData);
       } catch (error) {
+        console.error('Error details:', error); // エラー詳細確認用
         setError(error.message);
-        console.error('Error fetching data:', error);
       } finally {
         setIsLoading(false);
       }
@@ -31,6 +32,8 @@ const YoutubeRanking = () => {
   }, []);
 
   const sortData = (items, key, order) => {
+    if (!items || !Array.isArray(items)) return [];
+    
     return [...items].sort((a, b) => {
       let compareA, compareB;
       
@@ -40,12 +43,12 @@ const YoutubeRanking = () => {
           compareB = b.current_rank;
           break;
         case 'subscriber_count':
-          compareA = a.current_stats.subscriber_count;
-          compareB = b.current_stats.subscriber_count;
+          compareA = a.current_stats?.subscriber_count || 0;
+          compareB = b.current_stats?.subscriber_count || 0;
           break;
         case 'monthly_views':
-          compareA = a.current_stats.monthly_views;
-          compareB = b.current_stats.monthly_views;
+          compareA = a.current_stats?.monthly_views || 0;
+          compareB = b.current_stats?.monthly_views || 0;
           break;
         default:
           compareA = a.current_rank;
@@ -131,10 +134,10 @@ const YoutubeRanking = () => {
                   </div>
                 </td>
                 <td className="px-4 py-2 border text-right">
-                  {item.current_stats.subscriber_count.toLocaleString()}
+                  {item.current_stats?.subscriber_count.toLocaleString()}
                 </td>
                 <td className="px-4 py-2 border text-right">
-                  {item.current_stats.monthly_views.toLocaleString()}
+                  {item.current_stats?.monthly_views.toLocaleString()}
                 </td>
                 <td className="px-4 py-2 border text-center">
                   {item.rank_change_text}
