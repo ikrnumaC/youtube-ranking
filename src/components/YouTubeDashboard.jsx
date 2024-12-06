@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-const YoutubeRanking = () => {
+import React, { useState, useEffect } from 'react';
 
 const YoutubeRanking = () => {
   const [currentPage, setCurrentPage] = useState(1);
