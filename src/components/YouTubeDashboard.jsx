@@ -1,256 +1,143 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
-const YouTubeDashboard = () => {
-  const [data, setData] = useState(null);
-  const [filteredItems, setFilteredItems] = useState(null);
+const YoutubeRanking = () => {
   const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+  const [sortKey, setSortKey] = useState('current_rank');
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [data, setData] = useState({ comparison: [], metadata: {} });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedItems, setSelectedItems] = useState(() => {
-    const saved = localStorage.getItem('selectedYoutubeChannels');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [filters, setFilters] = useState({
-    subscriberMin: '',
-    subscriberMax: '',
-    viewsMin: '',
-    viewsMax: ''
-  });
-  const itemsPerPage = 20;
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(
-        'https://m4ks023065.execute-api.ap-southeast-2.amazonaws.com/prod/get-youtube-rankings-dynamodb?page=1'
-      );
-      
-      if (!response.ok) {
-        throw new Error('データの取得に失敗しました');
-      }
-
-      const jsonData = await response.json();
-      const data = typeof jsonData.body === 'string' ? JSON.parse(jsonData.body) : jsonData.body;
-      setData(data);
-      setFilteredItems(data.items);
-    } catch (err) {
-      console.error('Fetch error:', err);
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch('https://youtube-research.s3.ap-southeast-2.amazonaws.com/processed/latest_comparison.json');
+        if (!response.ok) {
+          throw new Error('データの取得に失敗しました');
+        }
+        const jsonData = await response.json();
+        setData(jsonData);
+      } catch (error) {
+        setError(error.message);
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchData();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem('selectedYoutubeChannels', JSON.stringify(selectedItems));
-  }, [selectedItems]);
-
-  const handleSelect = (youtubeUrl) => {
-    setSelectedItems(prev => 
-      prev.includes(youtubeUrl) 
-        ? prev.filter(url => url !== youtubeUrl)
-        : [...prev, youtubeUrl]
-    );
-  };
-
-  const applyFilters = () => {
-    if (!data) return;
-
-    let filtered = data.items.filter(item => {
-      const subscriber = parseInt(item.subscriber_count.replace(/,/g, ''));
-      const views = parseInt(item.monthly_views.replace(/,/g, ''));
+  const sortData = (items, key, order) => {
+    return [...items].sort((a, b) => {
+      let compareA, compareB;
       
-      const meetsSubscriberMin = !filters.subscriberMin || subscriber >= parseInt(filters.subscriberMin);
-      const meetsSubscriberMax = !filters.subscriberMax || subscriber <= parseInt(filters.subscriberMax);
-      const meetsViewsMin = !filters.viewsMin || views >= parseInt(filters.viewsMin);
-      const meetsViewsMax = !filters.viewsMax || views <= parseInt(filters.viewsMax);
-
-      return meetsSubscriberMin && meetsSubscriberMax && meetsViewsMin && meetsViewsMax;
+      switch(key) {
+        case 'current_rank':
+          compareA = a.current_rank;
+          compareB = b.current_rank;
+          break;
+        case 'subscriber_count':
+          compareA = a.current_stats.subscriber_count;
+          compareB = b.current_stats.subscriber_count;
+          break;
+        case 'monthly_views':
+          compareA = a.current_stats.monthly_views;
+          compareB = b.current_stats.monthly_views;
+          break;
+        default:
+          compareA = a.current_rank;
+          compareB = b.current_rank;
+      }
+      
+      return order === 'asc' ? compareA - compareB : compareB - compareA;
     });
-
-    // ランキング順にソート
-    filtered.sort((a, b) => parseInt(a.rank) - parseInt(b.rank));
-    setFilteredItems(filtered);
-    setCurrentPage(1);
   };
 
-  const handleCSVDownload = () => {
-    if (!filteredItems) return;
-
-    const selectedChannels = filteredItems.filter(channel => 
-      selectedItems.includes(channel.youtube_url)
-    );
-
-    const csvContent = [
-      ['チャンネル名', 'チャンネルURL', '再生数', 'ランキング'].join(','),
-      ...selectedChannels.map(channel => [
-        `"${channel.channel_name}"`,
-        channel.youtube_url,
-        channel.monthly_views,
-        channel.rank
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'youtube_channels.csv';
-    link.click();
+  const handleSort = (key) => {
+    const newOrder = sortKey === key && sortOrder === 'asc' ? 'desc' : 'asc';
+    setSortKey(key);
+    setSortOrder(newOrder);
   };
+
+  const totalPages = Math.ceil((data.comparison?.length || 0) / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const sortedData = sortData(data.comparison || [], sortKey, sortOrder);
+  const currentItems = sortedData.slice(startIndex, endIndex);
 
   if (isLoading) {
-    return <div className="flex items-center justify-center p-8">データを読み込み中...</div>;
+    return <div className="p-4 text-center">データを読み込み中...</div>;
   }
 
   if (error) {
-    return (
-      <div className="p-6 max-w-2xl mx-auto bg-red-50 border-l-4 border-red-500">
-        <h3 className="text-red-800 font-medium">エラーが発生しました</h3>
-        <p className="text-red-700">{error}</p>
-        <button onClick={fetchData} className="mt-3 bg-red-100 hover:bg-red-200 text-red-800 font-semibold py-2 px-4 rounded">
-          再試行
-        </button>
-      </div>
-    );
+    return <div className="p-4 text-center text-red-600">エラー: {error}</div>;
   }
 
-  if (!filteredItems) return null;
-
-  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentItems = filteredItems.slice(startIndex, startIndex + itemsPerPage);
-
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">YouTubeチャンネルランキング</h1>
-      
-      <div className="mb-6 p-4 bg-gray-50 rounded">
-        <h2 className="text-lg font-bold mb-4">フィルター</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <h3 className="font-medium mb-2">チャンネル登録者数</h3>
-            <div className="flex gap-2 items-center">
-              <input 
-                type="number" 
-                placeholder="最小値"
-                value={filters.subscriberMin}
-                onChange={(e) => setFilters(prev => ({ ...prev, subscriberMin: e.target.value }))}
-                className="w-32 px-2 py-1 border rounded"
-              />
-              <span>～</span>
-              <input 
-                type="number" 
-                placeholder="最大値"
-                value={filters.subscriberMax}
-                onChange={(e) => setFilters(prev => ({ ...prev, subscriberMax: e.target.value }))}
-                className="w-32 px-2 py-1 border rounded"
-              />
-              <span>人</span>
-            </div>
-          </div>
-          <div>
-            <h3 className="font-medium mb-2">月間再生回数</h3>
-            <div className="flex gap-2 items-center">
-              <input 
-                type="number" 
-                placeholder="最小値"
-                value={filters.viewsMin}
-                onChange={(e) => setFilters(prev => ({ ...prev, viewsMin: e.target.value }))}
-                className="w-32 px-2 py-1 border rounded"
-              />
-              <span>～</span>
-              <input 
-                type="number" 
-                placeholder="最大値"
-                value={filters.viewsMax}
-                onChange={(e) => setFilters(prev => ({ ...prev, viewsMax: e.target.value }))}
-                className="w-32 px-2 py-1 border rounded"
-              />
-              <span>回</span>
-            </div>
-          </div>
-        </div>
-        <button 
-          onClick={applyFilters}
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          フィルターを適用
-        </button>
+    <div className="p-4">
+      <div className="mb-4">
+        <h2 className="text-2xl font-bold">YouTubeチャンネルランキング</h2>
+        <p className="text-gray-600">総チャンネル数: {data.metadata?.total_channels || 0}</p>
       </div>
 
-      <div className="mb-4">
-        <button 
-          onClick={handleCSVDownload}
-          disabled={selectedItems.length === 0}
-          className="px-4 py-2 bg-green-500 text-white rounded disabled:opacity-50 hover:bg-green-600"
-        >
-          選択項目をCSVダウンロード
-        </button>
-      </div>
-      
       <div className="overflow-x-auto">
-        <table className="min-w-full bg-white">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-4 py-2 text-left">選択</th>
-              <th className="px-4 py-2 text-left">順位</th>
-              <th className="px-4 py-2 text-left">チャンネル</th>
-              <th className="px-4 py-2 text-right">登録者数</th>
-              <th className="px-4 py-2 text-right">月間再生回数</th>
+        <table className="min-w-full bg-white border">
+          <thead>
+            <tr className="bg-gray-100">
+              <th 
+                className="cursor-pointer px-4 py-2 border" 
+                onClick={() => handleSort('current_rank')}
+              >
+                順位 {sortKey === 'current_rank' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+              </th>
+              <th className="px-4 py-2 border">チャンネル</th>
+              <th 
+                className="cursor-pointer px-4 py-2 border"
+                onClick={() => handleSort('subscriber_count')}
+              >
+                登録者数 {sortKey === 'subscriber_count' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+              </th>
+              <th 
+                className="cursor-pointer px-4 py-2 border"
+                onClick={() => handleSort('monthly_views')}
+              >
+                月間視聴回数 {sortKey === 'monthly_views' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
+              </th>
+              <th className="px-4 py-2 border">順位変動</th>
             </tr>
           </thead>
           <tbody>
-            {currentItems.map((channel) => (
-              <tr key={channel.youtube_url} className="border-b hover:bg-gray-50">
-                <td className="px-4 py-2">
-                  <input 
-                    type="checkbox"
-                    checked={selectedItems.includes(channel.youtube_url)}
-                    onChange={() => handleSelect(channel.youtube_url)}
-                    className="w-4 h-4"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  {channel.rank}
-                  <span className="ml-1">
-                    {channel.rank_change === 'new' ? 
-                      <span className="text-blue-500">NEW</span> :
-                      channel.rank_change > 0 ? 
-                        <span className="text-red-500">↓{channel.rank_change}</span> :
-                      channel.rank_change < 0 ? 
-                        <span className="text-green-500">↑{Math.abs(channel.rank_change)}</span> :
-                        null
-                    }
-                  </span>
-                </td>
-                <td className="px-4 py-2">
-                  <a 
-                    href={channel.youtube_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center text-blue-600 hover:underline"
-                  >
-                    <img
-                      src={channel.icon_url}
-                      alt=""
+            {currentItems.map((item) => (
+              <tr key={item.youtube_url} className="hover:bg-gray-50">
+                <td className="px-4 py-2 border text-center">{item.current_rank}</td>
+                <td className="px-4 py-2 border">
+                  <div className="flex items-center">
+                    <img 
+                      src={item.icon_url} 
+                      alt={item.channel_name}
                       className="w-8 h-8 rounded-full mr-2"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = "https://via.placeholder.com/32";
-                      }}
                     />
-                    {channel.channel_name}
-                  </a>
+                    <a 
+                      href={item.youtube_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {item.channel_name}
+                    </a>
+                  </div>
                 </td>
-                <td className="px-4 py-2 text-right">
-                  {new Intl.NumberFormat('ja-JP').format(channel.subscriber_count)}
+                <td className="px-4 py-2 border text-right">
+                  {item.current_stats.subscriber_count.toLocaleString()}
                 </td>
-                <td className="px-4 py-2 text-right">
-                  {new Intl.NumberFormat('ja-JP').format(channel.monthly_views)}
+                <td className="px-4 py-2 border text-right">
+                  {item.current_stats.monthly_views.toLocaleString()}
+                </td>
+                <td className="px-4 py-2 border text-center">
+                  {item.rank_change_text}
                 </td>
               </tr>
             ))}
@@ -258,9 +145,9 @@ const YouTubeDashboard = () => {
         </table>
       </div>
 
-      <div className="mt-6 flex justify-center gap-2">
+      <div className="mt-4 flex justify-center space-x-2">
         <button
-          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
           className="px-4 py-2 border rounded disabled:opacity-50"
         >
@@ -270,7 +157,7 @@ const YouTubeDashboard = () => {
           {currentPage} / {totalPages}
         </span>
         <button
-          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
           className="px-4 py-2 border rounded disabled:opacity-50"
         >
@@ -281,4 +168,4 @@ const YouTubeDashboard = () => {
   );
 };
 
-export default YouTubeDashboard;
+export default YoutubeRanking;
