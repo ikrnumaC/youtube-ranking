@@ -1,7 +1,3 @@
-はい、チェックボックスだけ追加してみましょう。
-現在動作している状態を維持しながら、最小限の変更を加えます：
-
-```javascript
 import React, { useEffect, useState } from 'react';
 
 function YoutubeRanking() {
@@ -102,12 +98,3 @@ function YoutubeRanking() {
 }
 
 export default YoutubeRanking;
-```
-
-主な変更点：
-1. selectedChannels の state を追加
-2. テーブルヘッダーに全選択用チェックボックスを追加
-3. 各行にチェックボックスを追加
-4. 選択中の件数表示を追加
-
-これで動作確認してみましょうか？チェックボックスが正常に機能することを確認してから、次のCSV出力機能を追加します。
